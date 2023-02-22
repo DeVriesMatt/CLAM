@@ -189,14 +189,14 @@ class Generic_WSI_Classification_Dataset(Dataset):
 	def get_split_from_df(self, all_splits, split_key='train'):
 		split = all_splits[split_key]
 		split = split.dropna().reset_index(drop=True)
-
 		if len(split) > 0:
 			mask = self.slide_data['slide_id'].isin(split.tolist())
 			df_slice = self.slide_data[mask].reset_index(drop=True)
 			split = Generic_Split(df_slice, data_dir=self.data_dir, num_classes=self.num_classes)
 		else:
 			split = None
-		
+
+
 		return split
 
 	def get_merged_split_from_df(self, all_splits, split_keys=['train']):
@@ -245,10 +245,11 @@ class Generic_WSI_Classification_Dataset(Dataset):
 		else:
 			assert csv_path 
 			all_splits = pd.read_csv(csv_path, dtype=self.slide_data['slide_id'].dtype)  # Without "dtype=self.slide_data['slide_id'].dtype", read_csv() will convert all-number columns to a numerical type. Even if we convert numerical columns back to objects later, we may lose zero-padding in the process; the columns must be correctly read in from the get-go. When we compare the individual train/val/test columns to self.slide_data['slide_id'] in the get_split_from_df() method, we cannot compare objects (strings) to numbers or even to incorrectly zero-padded objects/strings. An example of this breaking is shown in https://github.com/andrew-weisman/clam_analysis/tree/main/datatype_comparison_bug-2021-12-01.
+
 			train_split = self.get_split_from_df(all_splits, 'train')
 			val_split = self.get_split_from_df(all_splits, 'val')
 			test_split = self.get_split_from_df(all_splits, 'test')
-			
+
 		return train_split, val_split, test_split
 
 	def get_list(self, ids):
@@ -320,7 +321,7 @@ class Generic_MIL_Dataset(Generic_WSI_Classification_Dataset):
 	
 		super(Generic_MIL_Dataset, self).__init__(**kwargs)
 		self.data_dir = data_dir
-		self.use_h5 = False
+		self.use_h5 = True
 
 	def load_from_h5(self, toggle):
 		self.use_h5 = toggle
@@ -333,10 +334,10 @@ class Generic_MIL_Dataset(Generic_WSI_Classification_Dataset):
 			data_dir = self.data_dir[source]
 		else:
 			data_dir = self.data_dir
-
 		if not self.use_h5:
 			if self.data_dir:
 				full_path = os.path.join(data_dir, 'pt_files', '{}.pt'.format(slide_id))
+
 				features = torch.load(full_path)
 				return features, label
 			
@@ -355,7 +356,7 @@ class Generic_MIL_Dataset(Generic_WSI_Classification_Dataset):
 
 class Generic_Split(Generic_MIL_Dataset):
 	def __init__(self, slide_data, data_dir=None, num_classes=2):
-		self.use_h5 = False
+		self.use_h5 = True
 		self.slide_data = slide_data
 		self.data_dir = data_dir
 		self.num_classes = num_classes
