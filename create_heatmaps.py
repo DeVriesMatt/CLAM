@@ -22,12 +22,14 @@ from wsi_core.batch_process_utils import initialize_df
 from vis_utils.heatmap_utils import initialize_wsi, drawHeatmap, compute_from_patches
 from wsi_core.wsi_utils import sample_rois
 from utils.file_utils import save_hdf5
+import sys
+sys.path.append('/home/mvries/Documents/GitHub/DTFD-MIL')
 
 parser = argparse.ArgumentParser(description='Heatmap inference script')
 parser.add_argument('--save_exp_code', type=str, default=None,
 					help='experiment code')
 parser.add_argument('--overlap', type=float, default=None)
-parser.add_argument('--config_file', type=str, default="heatmap_config_template.yaml")
+parser.add_argument('--config_file', type=str, default="config_template.yaml")
 args = parser.parse_args()
 
 def infer_single_slide(model, features, label, reverse_label_dict, k=1):
@@ -52,8 +54,40 @@ def infer_single_slide(model, features, label, reverse_label_dict, k=1):
 		probs = probs[-1].cpu().numpy()
 		ids = ids[-1].cpu().numpy()
 		preds_str = np.array([reverse_label_dict[idx] for idx in ids])
+		# print(A.mean())
+		# print(A)
+		# print(A.min())
+		# print(A.max())
 
 	return ids, preds_str, probs, A
+
+
+def infer_single_slide_dtfd(model, features, label, reverse_label_dict, k=1):
+	features = features.to(device)
+	with torch.no_grad():
+		if isinstance(model, (CLAM_SB, CLAM_MB)):
+			model_results_dict = model(features)
+			logits, Y_prob, Y_hat, A, _ = model(features)
+			Y_hat = Y_hat.item()
+
+			if isinstance(model, (CLAM_MB,)):
+				A = A[Y_hat]
+
+			A = A.view(-1, 1).cpu().numpy()
+
+		else:
+			raise NotImplementedError
+
+		print('Y_hat: {}, Y: {}, Y_prob: {}'.format(reverse_label_dict[Y_hat], label,
+													["{:.4f}".format(p) for p in Y_prob.cpu().flatten()]))
+
+		probs, ids = torch.topk(Y_prob, k)
+		probs = probs[-1].cpu().numpy()
+		ids = ids[-1].cpu().numpy()
+		preds_str = np.array([reverse_label_dict[idx] for idx in ids])
+
+	return ids, preds_str, probs, A
+
 
 def load_params(df_entry, params):
 	for key in params.keys():
@@ -330,6 +364,7 @@ if __name__ == '__main__':
 		dset = file['attention_scores']
 		coord_dset = file['coords']
 		scores = dset[:]
+		print(f" The Scores are {scores.shape}")
 		coords = coord_dset[:]
 		file.close()
 

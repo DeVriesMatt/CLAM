@@ -34,14 +34,15 @@ parser.add_argument('--model_type', type=str, choices=['clam_sb', 'clam_mb', 'mi
                     help='type of model (default: clam_sb)')
 parser.add_argument('--drop_out', action='store_true', default=False, 
                     help='whether model uses dropout')
-parser.add_argument('--k', type=int, default=10, help='number of folds (default: 10)')
+parser.add_argument('--k', type=int, default=5, help='number of folds (default: 10)')
 parser.add_argument('--k_start', type=int, default=-1, help='start fold (default: -1, last fold)')
 parser.add_argument('--k_end', type=int, default=-1, help='end fold (default: -1, first fold)')
 parser.add_argument('--fold', type=int, default=-1, help='single fold to evaluate')
 parser.add_argument('--micro_average', action='store_true', default=False, 
                     help='use micro_average instead of macro_avearge for multiclass AUC')
 parser.add_argument('--split', type=str, choices=['train', 'val', 'test', 'all'], default='test')
-parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal',  'task_2_tumor_subtyping'])
+parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal',  'task_2_tumor_subtyping',
+                                                 'task_3_lipoma'])
 args = parser.parse_args()
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -100,6 +101,15 @@ elif args.task == 'task_2_tumor_subtyping':
 #                             patient_strat= False,
 #                             ignore=['TCGA-SARC'])
 
+elif args.task == 'task_3_lipoma':
+    args.n_classes=2
+    dataset = Generic_MIL_Dataset(csv_path = '/mnt/nvme0n1/ICCV/lipo/lipo_sub_data.csv',
+                            data_dir= os.path.join(args.data_root_dir),
+                            shuffle = False,
+                            print_info = True,
+                            label_dict = {'well-differentiated liposarcoma':0, 'dedifferentiated liposarcoma':1},
+                            patient_strat=False,
+                            ignore=[])
 else:
     raise NotImplementedError
 
@@ -130,13 +140,13 @@ if __name__ == "__main__":
             csv_path = '{}/splits_{}.csv'.format(args.splits_dir, folds[ckpt_idx])
             datasets = dataset.return_splits(from_id=False, csv_path=csv_path)
             split_dataset = datasets[datasets_id[args.split]]
-        model, patient_results, test_error, auc, df  = eval(split_dataset, args, ckpt_paths[ckpt_idx])
+        model, patient_results, test_error, auc, df, test_f1  = eval(split_dataset, args, ckpt_paths[ckpt_idx])
         all_results.append(all_results)
         all_auc.append(auc)
         all_acc.append(1-test_error)
         df.to_csv(os.path.join(args.save_dir, 'fold_{}.csv'.format(folds[ckpt_idx])), index=False)
 
-    final_df = pd.DataFrame({'folds': folds, 'test_auc': all_auc, 'test_acc': all_acc})
+    final_df = pd.DataFrame({'folds': folds, 'test_auc': all_auc, 'test_acc': all_acc, 'test_f1': test_f1})
     if len(folds) != args.k:
         save_name = 'summary_partial_{}_{}.csv'.format(folds[0], folds[-1])
     else:

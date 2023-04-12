@@ -16,6 +16,10 @@ from scipy.stats import percentileofscore
 import math
 from utils.file_utils import save_hdf5
 from scipy.stats import percentileofscore
+import sys
+sys.path.append('/home/mvries/Documents/GitHub/DTFD-MIL')
+
+from Main_DTFD_MIL_MATT import extract_feats_for_heatmap
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -60,17 +64,22 @@ def compute_from_patches(wsi_object, clam_pred=None, model=None, feature_extract
     for idx, (roi, coords) in enumerate(roi_loader):
         roi = roi.to(device)
         coords = coords.numpy()
-        
+
         with torch.no_grad():
             features = feature_extractor(roi)
 
             if attn_save_path is not None:
-                A = model(features, attention_only=True)
-           
-                if A.size(0) > 1: #CLAM multi-branch attention
-                    A = A[clam_pred]
+                if model == 'DTFD':
+                    data = ('test_005', features, 1)
+                    _, _, _, A = extract_feats_for_heatmap(data)
+                else:
+                    A = model(features, attention_only=True)
+
+                    if A.size(0) > 1: #CLAM multi-branch attention
+                        A = A[clam_pred]
 
                 A = A.view(-1, 1).cpu().numpy()
+                print(f"The shape of A is: {A.shape}")
 
                 if ref_scores is not None:
                     for score_idx in range(len(A)):

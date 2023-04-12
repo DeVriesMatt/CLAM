@@ -3,3 +3,6 @@ __pycache__/
 splits/
 results/
 smooth-topk/
+eval_results/
+heatmaps/
+heatmaps_dtfd/

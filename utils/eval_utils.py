@@ -13,6 +13,7 @@ from utils.core_utils import Accuracy_Logger
 from sklearn.metrics import roc_auc_score, roc_curve, auc
 from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
+from sklearn.metrics import f1_score
 
 def initiate_model(args, ckpt_path):
     print('Init Model')    
@@ -39,7 +40,23 @@ def initiate_model(args, ckpt_path):
         if 'instance_loss_fn' in key:
             continue
         ckpt_clean.update({key.replace('.module', ''):ckpt[key]})
-    model.load_state_dict(ckpt_clean, strict=True)
+
+    print(ckpt_clean.keys())
+    print(model.state_dict().keys())
+
+    model_dict = (
+        model.state_dict()
+    )  # load parameters from pre-trained FoldingNet
+
+    for k in ckpt_clean:
+        if k in model_dict:
+            model_dict[k] = ckpt_clean[k]
+            print("    Found weight: " + k)
+        elif k.replace("net.3", "net.2") in model_dict:
+            model_dict[k.replace("net.3", "net.2")] = ckpt_clean[k]
+            print("    Found weight: " + k)
+
+    model.load_state_dict(model_dict, strict=True)
 
     model.relocate()
     model.eval()
@@ -50,16 +67,17 @@ def eval(dataset, args, ckpt_path):
     
     print('Init Loaders')
     loader = get_simple_loader(dataset)
-    patient_results, test_error, auc, df, _ = summary(model, loader, args)
+    patient_results, test_error, auc, df, _, test_f1 = summary(model, loader, args)
     print('test_error: ', test_error)
     print('auc: ', auc)
-    return model, patient_results, test_error, auc, df
+    return model, patient_results, test_error, auc, df, test_f1
 
 def summary(model, loader, args):
     acc_logger = Accuracy_Logger(n_classes=args.n_classes)
     model.eval()
     test_loss = 0.
     test_error = 0.
+    test_f1 = 0.
 
     all_probs = np.zeros((len(loader), args.n_classes))
     all_labels = np.zeros(len(loader))
@@ -86,8 +104,10 @@ def summary(model, loader, args):
         error = calculate_error(Y_hat, label)
         test_error += error
 
+
     del data
     test_error /= len(loader)
+    test_f1 = f1_score(all_labels, all_preds)
 
     aucs = []
     if len(np.unique(all_labels)) == 1:
@@ -115,4 +135,4 @@ def summary(model, loader, args):
     for c in range(args.n_classes):
         results_dict.update({'p_{}'.format(c): all_probs[:,c]})
     df = pd.DataFrame(results_dict)
-    return patient_results, test_error, auc_score, df, acc_logger
+    return patient_results, test_error, auc_score, df, acc_logger, test_f1

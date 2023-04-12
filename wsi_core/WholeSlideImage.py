@@ -574,7 +574,10 @@ class WholeSlideImage(object):
         overlay = np.full(np.flip(region_size), 0).astype(float)
         counter = np.full(np.flip(region_size), 0).astype(np.uint16)      
         count = 0
-        for idx in range(len(coords)):
+        print(len(scores))
+        print(len(coords))
+
+        for idx in range(len(coords)):  #TODO changed to scores from coords
             score = scores[idx]
             coord = coords[idx]
             if score >= threshold:
