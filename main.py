@@ -81,14 +81,14 @@ parser.add_argument('--seed', type=int, default=1,
                     help='random seed for reproducible experiment (default: 1)')
 parser.add_argument('--k', type=int, default=5, help='number of folds (default: 10)')
 parser.add_argument('--k_start', type=int, default=0, help='start fold (default: -1, last fold)')
-parser.add_argument('--k_end', type=int, default=4, help='end fold (default: -1, first fold)')
+parser.add_argument('--k_end', type=int, default=5, help='end fold (default: -1, first fold)')
 parser.add_argument('--results_dir', default='./results', help='results directory (default: ./results)')
 parser.add_argument('--split_dir', type=str, default='/mnt/nvme0n1/ICCV/camelyon_5_fold/',
                     help='manually specify the set of splits to use, ' 
                     +'instead of infering from the task and label_frac argument (default: None)')
 parser.add_argument('--log_data', action='store_true', default=False, help='log data using tensorboard')
 parser.add_argument('--testing', action='store_true', default=False, help='debugging tool')
-parser.add_argument('--early_stopping', action='store_true', default=False, help='enable early stopping')
+parser.add_argument('--early_stopping', action='store_true', default=True, help='enable early stopping')
 parser.add_argument('--opt', type=str, choices = ['adam', 'sgd'], default='adam')
 parser.add_argument('--drop_out', action='store_true', default=False, help='enable dropout (p=0.25)')
 parser.add_argument('--bag_loss', type=str, choices=['svm', 'ce'], default='ce',
